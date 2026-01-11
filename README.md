@@ -13,9 +13,9 @@ A secure, self-destructing messaging application where all encryption happens on
 - **Password Protection**: Room password never leaves the browser (derived key via PBKDF2)
 - **Modern UI**: React + Tailwind; password tip to share secrets offline
 - **Zero-Knowledge**: Server never sees plaintext or passwords
-- **Dark Mode**: System-aware dark theme with manual toggle (NEW ✨)
-- **Rate Limiting**: Protection against abuse and DDoS attacks (NEW ✨)
-- **Input Validation**: Comprehensive validation with Joi (NEW ✨)
+- **Dark Mode**: System-aware dark theme with manual toggle 
+- **Rate Limiting**: Protection against abuse and DDoS attacks 
+- **Input Validation**: Comprehensive validation with Joi 
 
 ## 🏗️ Architecture
 
@@ -211,17 +211,6 @@ cd frontend
 npm start    # React development server with hot reload
 ```
 
-### Building for Production
-```bash
-# Frontend
-cd frontend
-npm run build
-
-# Backend
-cd backend
-npm start
-```
-
 ## 🚀 Deployment
 
 ### Backend (Render/Heroku)
@@ -276,36 +265,3 @@ redis-cli ping
 - Check browser console for Web Crypto API errors
 - Verify password meets all requirements
 
-## 📝 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## ⚠️ Security Notice
-
-This is a demonstration project. For production use:
-- Use HTTPS everywhere
-- Implement proper authentication
-- Add rate limiting
-- Use a managed Redis service
-- Regular security audits
-- Keep dependencies updated
-
-## 🆘 Support
-
-If you encounter any issues:
-1. Check the troubleshooting section
-2. Review the browser console for errors
-3. Check server logs for backend issues
-4. Open an issue on GitHub
-
----
-
-**Remember**: This app prioritizes security and privacy. All encryption happens on your device, and we never see your messages or passwords!
