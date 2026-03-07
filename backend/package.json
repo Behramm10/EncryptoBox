@@ -21,7 +21,7 @@
     "joi": "^17.11.0",
     "redis": "^5.8.2",
     "socket.io": "^4.7.2",
-    "uuid": "^13.0.0"
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
