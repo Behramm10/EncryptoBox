@@ -26,12 +26,14 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => {
     if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
       console.log(`✅ API Response: ${response.status} ${response.config.url}`);
     }
     return response;
   },
   (error) => {
     if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
       console.error('❌ API Response Error:', error.response?.data || error.message);
     }
     return Promise.reject(error);
