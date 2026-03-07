@@ -1,50 +1,44 @@
 import axios from 'axios';
 
-// Create axios instance with base configuration
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001/api',
   timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor for logging
 api.interceptors.request.use(
   (config) => {
-    // eslint-disable-next-line no-console
-    console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    }
     return config;
   },
   (error) => {
-    // eslint-disable-next-line no-console
-    console.error('❌ API Request Error:', error);
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.error('❌ API Request Error:', error);
+    }
     return Promise.reject(error);
   }
 );
 
-// Response interceptor for error handling
 api.interceptors.response.use(
   (response) => {
-    // eslint-disable-next-line no-console
-    console.log(`✅ API Response: ${response.status} ${response.config.url}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`✅ API Response: ${response.status} ${response.config.url}`);
+    }
     return response;
   },
   (error) => {
-    console.error('❌ API Response Error:', error.response?.data || error.message);
+    if (process.env.NODE_ENV === 'development') {
+      console.error('❌ API Response Error:', error.response?.data || error.message);
+    }
     return Promise.reject(error);
   }
 );
 
-/**
- * Room API functions
- */
 export const roomAPI = {
-  /**
-   * Create a new room
-   * @param {number} ttl - Room time-to-live in seconds (default: 3600)
-   * @returns {Promise<Object>} - Room creation response
-   */
   createRoom: async (ttl = 3600, options = {}) => {
     try {
       const response = await api.post('/rooms', { ttl, ...options });
@@ -53,29 +47,15 @@ export const roomAPI = {
       throw new Error(error.response?.data?.error || 'Failed to create room');
     }
   },
-
-  /**
-   * Check if a room exists
-   * @param {string} roomId - The room ID to check
-   * @returns {Promise<Object>} - Room information
-   */
   getRoom: async (roomId) => {
     try {
       const response = await api.get(`/rooms/${roomId}`);
       return response.data;
     } catch (error) {
-      if (error.response?.status === 404) {
-        throw new Error('Room not found');
-      }
+      if (error.response?.status === 404) throw new Error('Room not found');
       throw new Error(error.response?.data?.error || 'Failed to get room');
     }
   },
-
-  /**
-   * Delete a room
-   * @param {string} roomId - The room ID to delete
-   * @returns {Promise<Object>} - Deletion response
-   */
   deleteRoom: async (roomId) => {
     try {
       const response = await api.delete(`/rooms/${roomId}`);
@@ -99,58 +79,37 @@ export const roomAPI = {
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Failed to create invite');
     }
+  },
+  leaveRoom: async (roomId, clientId) => {
+    try {
+      const response = await api.post(`/rooms/${roomId}/leave`, { clientId });
+      return response.data;
+    } catch (_e) {
+      // Best-effort — don't block the user from navigating away
+      return { success: false };
+    }
   }
 };
 
-/**
- * Message API functions
- */
 export const messageAPI = {
-  /**
-   * Send a message to a room
-   * @param {string} roomId - The room ID
-   * @param {Object} messageData - Encrypted message data
-   * @param {number} ttl - Message time-to-live in seconds (default: 300)
-   * @returns {Promise<Object>} - Message creation response
-   */
   sendMessage: async (roomId, messageData, ttl = 300) => {
     try {
-      const response = await api.post(`/rooms/${roomId}/messages`, {
-        ...messageData,
-        ttl
-      });
+      const response = await api.post(`/rooms/${roomId}/messages`, { ...messageData, ttl });
       return response.data;
     } catch (error) {
-      if (error.response?.status === 404) {
-        throw new Error('Room not found');
-      }
+      if (error.response?.status === 404) throw new Error('Room not found');
       throw new Error(error.response?.data?.error || 'Failed to send message');
     }
   },
-
-  /**
-   * Get all messages from a room
-   * @param {string} roomId - The room ID
-   * @returns {Promise<Object>} - Messages response
-   */
   getMessages: async (roomId) => {
     try {
       const response = await api.get(`/rooms/${roomId}/messages`);
       return response.data;
     } catch (error) {
-      if (error.response?.status === 404) {
-        throw new Error('Room not found');
-      }
+      if (error.response?.status === 404) throw new Error('Room not found');
       throw new Error(error.response?.data?.error || 'Failed to get messages');
     }
   },
-
-  /**
-   * Delete a specific message
-   * @param {string} roomId - The room ID
-   * @param {string} messageId - The message ID to delete
-   * @returns {Promise<Object>} - Deletion response
-   */
   deleteMessage: async (roomId, messageId) => {
     try {
       const response = await api.delete(`/rooms/${roomId}/messages/${messageId}`);
@@ -161,9 +120,6 @@ export const messageAPI = {
   }
 };
 
-/**
- * Attachments API functions
- */
 export const attachmentsAPI = {
   init: async (roomId, { mimeType, ttlMs, viewOnce = false, category = 'chat' }) => {
     try {
@@ -175,16 +131,10 @@ export const attachmentsAPI = {
   },
   upload: async (roomId, id, uploadToken, ciphertextBytes) => {
     try {
-      const response = await api.put(`/rooms/${roomId}/attachments/${id}`,
-        ciphertextBytes,
-        {
-          headers: {
-            'Authorization': `Bearer ${uploadToken}`,
-            'Content-Type': 'application/octet-stream'
-          },
-          transformRequest: [(data) => data],
-        }
-      );
+      const response = await api.put(`/rooms/${roomId}/attachments/${id}`, ciphertextBytes, {
+        headers: { 'Authorization': `Bearer ${uploadToken}`, 'Content-Type': 'application/octet-stream' },
+        transformRequest: [(data) => data],
+      });
       return response.data;
     } catch (error) {
       throw new Error(error.response?.data?.error || 'Failed to upload attachment');
@@ -212,14 +162,7 @@ export const attachmentsAPI = {
   }
 };
 
-/**
- * Health check API
- */
 export const healthAPI = {
-  /**
-   * Check if the API is healthy
-   * @returns {Promise<Object>} - Health status
-   */
   checkHealth: async () => {
     try {
       const response = await api.get('/health');

@@ -14,7 +14,7 @@ const MessageInput = ({ onSendMessage, disabled, onSendAttachment }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!message.trim() || isSending || disabled) return;
 
     setIsSending(true);
@@ -60,14 +60,14 @@ const MessageInput = ({ onSendMessage, disabled, onSendAttachment }) => {
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400">TTL:</span>
               <select
-                className="input-field !h-8 !py-1 !px-3 text-xs w-24 bg-white/5 border-white/10 text-gray-300"
+                className="input-field !h-8 !py-1 !px-3 text-xs w-24"
                 value={ttlSeconds}
                 onChange={(e) => setTtlSeconds(parseInt(e.target.value, 10))}
               >
-                <option value={30} className="bg-gray-900">30s</option>
-                <option value={300} className="bg-gray-900">5m</option>
-                <option value={3600} className="bg-gray-900">1h</option>
-                <option value={86400} className="bg-gray-900">24h</option>
+                <option value={30}>30s</option>
+                <option value={300}>5m</option>
+                <option value={3600}>1h</option>
+                <option value={86400}>24h</option>
               </select>
             </div>
           </div>

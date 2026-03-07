@@ -10,20 +10,14 @@ class RedisClient {
     try {
       this.client = redis.createClient({
         url: process.env.REDIS_URL || 'redis://localhost:6379',
-        retry_strategy: (options) => {
-          if (options.error && options.error.code === 'ECONNREFUSED') {
-            console.error('Redis server connection refused');
-            return new Error('Redis server connection refused');
+        socket: {
+          reconnectStrategy: (retries) => {
+            if (retries > 10) {
+              console.error('Redis max retry attempts reached');
+              return new Error('Max retry attempts reached');
+            }
+            return Math.min(retries * 100, 3000);
           }
-          if (options.total_retry_time > 1000 * 60 * 60) {
-            console.error('Redis retry time exhausted');
-            return new Error('Retry time exhausted');
-          }
-          if (options.attempt > 10) {
-            console.error('Redis max retry attempts reached');
-            return undefined;
-          }
-          return Math.min(options.attempt * 100, 3000);
         }
       });
 
@@ -47,11 +41,22 @@ class RedisClient {
       });
 
       await this.client.connect();
+      this._startCleanupInterval();
       return this.client;
     } catch (error) {
       console.error('Failed to connect to Redis:', error);
       throw error;
     }
+  }
+
+  _startCleanupInterval() {
+    setInterval(async () => {
+      try {
+        // Redis TTL handles expiry natively — placeholder for future tasks
+      } catch (err) {
+        console.error('Background cleanup error:', err);
+      }
+    }, 60000).unref?.();
   }
 
   async disconnect() {
@@ -68,7 +73,6 @@ class RedisClient {
     return this.client;
   }
 
-  // Room operations
   async createRoom(roomId, ttl = 3600, meta = {}) {
     const client = this.getClient();
     const roomKey = `room:${roomId}`;
@@ -109,18 +113,23 @@ class RedisClient {
     return await client.sCard(key);
   }
 
+  async removeMember(roomId, clientId) {
+    const client = this.getClient();
+    const key = `room:${roomId}:members`;
+    await client.sRem(key, clientId);
+    return await client.sCard(key); // returns remaining count
+  }
+
   async getMemberCount(roomId) {
     const client = this.getClient();
     const key = `room:${roomId}:members`;
     return await client.sCard(key);
   }
 
-  // Message operations
   async addMessage(roomId, messageData, ttl = 300) {
     const client = this.getClient();
     const messageId = `msg:${roomId}:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`;
     const messageKey = `message:${messageId}`;
-    
     const message = {
       id: messageId,
       roomId,
@@ -128,15 +137,10 @@ class RedisClient {
       timestamp: new Date().toISOString(),
       expiresAt: new Date(Date.now() + ttl * 1000).toISOString()
     };
-
-    // Store message with TTL
     await client.setEx(messageKey, ttl, JSON.stringify(message));
-    
-    // Add to room's message list (also with TTL)
     const roomMessagesKey = `room:${roomId}:messages`;
     await client.lPush(roomMessagesKey, messageId);
     await client.expire(roomMessagesKey, ttl);
-    
     return message;
   }
 
@@ -144,17 +148,13 @@ class RedisClient {
     const client = this.getClient();
     const roomMessagesKey = `room:${roomId}:messages`;
     const messageIds = await client.lRange(roomMessagesKey, 0, -1);
-    
-    const messages = [];
-    for (const messageId of messageIds) {
-      const messageKey = `message:${messageId}`;
-      const messageData = await client.get(messageKey);
-      if (messageData) {
-        messages.push(JSON.parse(messageData));
-      }
-    }
-    
-    // Sort by timestamp (oldest first) for chat-style ordering
+    if (!messageIds.length) return [];
+    // Use MGET for a single round-trip instead of N individual GETs
+    const messageKeys = messageIds.map(id => `message:${id}`);
+    const rawMessages = await client.mGet(messageKeys);
+    const messages = rawMessages
+      .filter(Boolean)
+      .map(raw => JSON.parse(raw));
     return messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   }
 
@@ -168,7 +168,6 @@ class RedisClient {
     const client = this.getClient();
     const roomMessagesKey = `room:${roomId}:messages`;
     const messageIds = await client.lRange(roomMessagesKey, 0, -1);
-    
     for (const messageId of messageIds) {
       const messageKey = `message:${messageId}`;
       const exists = await client.exists(messageKey);
@@ -179,7 +178,5 @@ class RedisClient {
   }
 }
 
-// Create singleton instance
 const redisClient = new RedisClient();
-
 module.exports = redisClient;

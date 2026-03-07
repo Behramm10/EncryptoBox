@@ -1,5 +1,4 @@
 const express = require('express');
-// HMAC-based compact JWT-like tokens implemented with crypto below
 const attachmentStore = require('../utils/attachmentStore');
 
 const router = express.Router();
@@ -40,14 +39,21 @@ function verifyToken(token, secret) {
   }
 }
 
-// POST /api/rooms/:roomId/attachments/init
+const ALLOWED_MIME_TYPES = new Set([
+  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
+  'video/mp4', 'video/webm',
+  'audio/mpeg', 'audio/ogg', 'audio/wav',
+  'application/pdf',
+  'text/plain',
+  'application/octet-stream',
+]);
+
 router.post('/:roomId/attachments/init', (req, res) => {
   try {
     const { roomId } = req.params;
     const { mimeType, ttlMs, viewOnce = false, category = 'chat' } = req.body || {};
-    if (!mimeType) {
-      return res.status(400).json({ success: false, error: 'mimeType required' });
-    }
+    if (!mimeType) return res.status(400).json({ success: false, error: 'mimeType required' });
+    if (!ALLOWED_MIME_TYPES.has(mimeType)) return res.status(400).json({ success: false, error: `Unsupported MIME type: ${mimeType}` });
     const entry = attachmentStore.initAttachment({ roomId, mimeType, ttlMs, viewOnce, category });
     const uploadToken = signToken({ sub: entry.id, roomId, scope: 'upload' }, getSecret('upload'), 10 * 60);
     return res.status(201).json({ success: true, id: entry.id, uploadToken, expiresAt: entry.expiresAt });
@@ -56,8 +62,7 @@ router.post('/:roomId/attachments/init', (req, res) => {
   }
 });
 
-// PUT /api/rooms/:roomId/attachments/:id (raw body)
-router.put('/:roomId/attachments/:id', express.raw({ type: '*/*', limit: process.env.ATTACHMENT_MAX_BYTES ? `${Math.ceil(parseInt(process.env.ATTACHMENT_MAX_BYTES, 10) / (1024*1024))}mb` : '12mb' }), (req, res) => {
+router.put('/:roomId/attachments/:id', express.raw({ type: '*/*', limit: process.env.ATTACHMENT_MAX_BYTES ? `${Math.ceil(parseInt(process.env.ATTACHMENT_MAX_BYTES, 10) / (1024 * 1024))}mb` : '12mb' }), (req, res) => {
   try {
     const { roomId, id } = req.params;
     const auth = req.headers.authorization || '';
@@ -67,20 +72,16 @@ router.put('/:roomId/attachments/:id', express.raw({ type: '*/*', limit: process
     if (!payload || payload.sub !== id || payload.roomId !== roomId || payload.scope !== 'upload') {
       return res.status(403).json({ success: false, error: 'Invalid token' });
     }
-
     const buf = Buffer.from(req.body);
     const entry = attachmentStore.putCiphertext(id, buf);
     if (!entry) return res.status(404).json({ success: false, error: 'Attachment not found' });
     return res.json({ success: true, id, size: entry.size, expiresAt: entry.expiresAt });
   } catch (e) {
-    if (e && /too large/i.test(String(e.message))) {
-      return res.status(413).json({ success: false, error: 'Attachment too large' });
-    }
+    if (e && /too large/i.test(String(e.message))) return res.status(413).json({ success: false, error: 'Attachment too large' });
     return res.status(500).json({ success: false, error: 'Failed to upload attachment' });
   }
 });
 
-// POST /api/rooms/:roomId/attachments/token -> mint short-lived download token
 router.post('/:roomId/attachments/token', (req, res) => {
   try {
     const { roomId } = req.params;
@@ -95,7 +96,6 @@ router.post('/:roomId/attachments/token', (req, res) => {
   }
 });
 
-// GET /api/rooms/:roomId/attachments/:id
 router.get('/:roomId/attachments/:id', (req, res) => {
   try {
     const { roomId, id } = req.params;
@@ -113,15 +113,12 @@ router.get('/:roomId/attachments/:id', (req, res) => {
     res.setHeader('X-Attachment-Mime', entry.mimeType);
     res.setHeader('X-Attachment-Size', String(entry.size));
     res.status(200).end(entry.ciphertext);
-    if (entry.viewOnce) {
-      attachmentStore.delete(id);
-    }
+    if (entry.viewOnce) attachmentStore.delete(id);
   } catch (_) {
     return res.status(500).json({ success: false, error: 'Failed to download attachment' });
   }
 });
 
-// POST /api/rooms/:roomId/attachments/:id/delete
 router.post('/:roomId/attachments/:id/delete', (req, res) => {
   const { roomId, id } = req.params;
   const entry = attachmentStore.get(id);
@@ -131,5 +128,3 @@ router.post('/:roomId/attachments/:id/delete', (req, res) => {
 });
 
 module.exports = router;
-
-

@@ -1,18 +1,30 @@
-FROM node:18-alpine
+# Stage 1: Build the React app
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
 RUN npm ci
 
-# Copy source code
 COPY . .
+RUN npm run build
 
-# Expose port
-EXPOSE 3000
+# Stage 2: Serve with nginx
+FROM nginx:alpine
 
-# Start the development server
-CMD ["npm", "start"]
+# Copy the production build
+COPY --from=builder /app/build /usr/share/nginx/html
+
+# SPA fallback — all routes go to index.html
+RUN echo 'server { \
+  listen 80; \
+  root /usr/share/nginx/html; \
+  index index.html; \
+  location / { try_files $uri $uri/ /index.html; } \
+  gzip on; \
+  gzip_types text/plain text/css application/json application/javascript; \
+}' > /etc/nginx/conf.d/default.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

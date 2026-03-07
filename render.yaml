@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: encryptobox-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: FRONTEND_URL
+        sync: false          # Set manually in Render dashboard
+      - key: REDIS_URL
+        sync: false          # Set manually in Render dashboard (Upstash URL)
+      - key: INVITE_SECRET
+        generateValue: true  # Render auto-generates a secure random value
+      - key: ATTACHMENT_SECRET
+        generateValue: true
+      - key: VAULT_SECRET
+        generateValue: true
