@@ -8,11 +8,15 @@ class RedisClient {
 
   async connect() {
     try {
-      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      const rawUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      const useTls = rawUrl.startsWith('rediss://');
+      // Normalize to redis:// — redis@5 conflicts when both rediss:// and socket.tls:true are combined
+      const redisUrl = useTls ? rawUrl.replace('rediss://', 'redis://') : rawUrl;
+
       this.client = redis.createClient({
         url: redisUrl,
         socket: {
-          tls: redisUrl.startsWith('rediss://'),
+          tls: useTls,
           reconnectStrategy: (retries) => {
             if (retries > 10) {
               console.error('Redis max retry attempts reached');
