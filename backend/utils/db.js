@@ -1,4 +1,4 @@
-const redis = require('redis');
+const Redis = require('ioredis');
 
 class RedisClient {
   constructor() {
@@ -8,37 +8,35 @@ class RedisClient {
 
   async connect() {
     try {
-      const rawUrl = process.env.REDIS_URL || 'redis://localhost:6379';
-      const useTls = rawUrl.startsWith('rediss://');
-      // Normalize to redis:// — redis@5 conflicts when both rediss:// and socket.tls:true are combined
-      const redisUrl = useTls ? rawUrl.replace('rediss://', 'redis://') : rawUrl;
+      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
 
-      this.client = redis.createClient({
-        url: redisUrl,
-        socket: {
-          tls: useTls,
-          reconnectStrategy: (retries) => {
-            if (retries > 10) {
-              console.error('Redis max retry attempts reached');
-              return new Error('Max retry attempts reached');
-            }
-            return Math.min(retries * 100, 3000);
+      this.client = new Redis(redisUrl, {
+        maxRetriesPerRequest: null,
+        retryStrategy: (times) => {
+          if (times > 10) {
+            console.error('Redis max retry attempts reached');
+            return null;
           }
-        }
+          return Math.min(times * 100, 3000);
+        },
+        tls: redisUrl.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
+      });
+
+      await new Promise((resolve, reject) => {
+        this.client.once('ready', () => {
+          console.log('✅ Connected to Redis');
+          console.log('✅ Redis client ready');
+          this.isConnected = true;
+          resolve();
+        });
+        this.client.once('error', (err) => {
+          reject(err);
+        });
       });
 
       this.client.on('error', (err) => {
-        console.error('Redis Client Error:', err);
+        console.error('Redis Client Error:', err.message);
         this.isConnected = false;
-      });
-
-      this.client.on('connect', () => {
-        console.log('✅ Connected to Redis');
-        this.isConnected = true;
-      });
-
-      this.client.on('ready', () => {
-        console.log('✅ Redis client ready');
       });
 
       this.client.on('end', () => {
@@ -46,7 +44,6 @@ class RedisClient {
         this.isConnected = false;
       });
 
-      await this.client.connect();
       this._startCleanupInterval();
       return this.client;
     } catch (error) {
@@ -58,7 +55,7 @@ class RedisClient {
   _startCleanupInterval() {
     setInterval(async () => {
       try {
-        // Redis TTL handles expiry natively — placeholder for future tasks
+        // Redis TTL handles expiry natively
       } catch (err) {
         console.error('Background cleanup error:', err);
       }
@@ -81,8 +78,7 @@ class RedisClient {
 
   async createRoom(roomId, ttl = 3600, meta = {}) {
     const client = this.getClient();
-    const roomKey = `room:${roomId}`;
-    await client.setEx(roomKey, ttl, JSON.stringify({
+    await client.setex(`room:${roomId}`, ttl, JSON.stringify({
       id: roomId,
       createdAt: new Date().toISOString(),
       expiresAt: new Date(Date.now() + ttl * 1000).toISOString(),
@@ -93,49 +89,42 @@ class RedisClient {
 
   async getRoom(roomId) {
     const client = this.getClient();
-    const roomKey = `room:${roomId}`;
-    const roomData = await client.get(roomKey);
-    return roomData ? JSON.parse(roomData) : null;
+    const data = await client.get(`room:${roomId}`);
+    return data ? JSON.parse(data) : null;
   }
 
   async roomExists(roomId) {
-    const client = this.getClient();
-    const roomKey = `room:${roomId}`;
-    return await client.exists(roomKey);
+    return await this.getClient().exists(`room:${roomId}`);
   }
 
   async setRoom(roomId, roomObj, ttlSeconds) {
     const client = this.getClient();
-    const roomKey = `room:${roomId}`;
-    await client.set(roomKey, JSON.stringify(roomObj));
-    if (ttlSeconds) await client.expire(roomKey, ttlSeconds);
+    await client.set(`room:${roomId}`, JSON.stringify(roomObj));
+    if (ttlSeconds) await client.expire(`room:${roomId}`, ttlSeconds);
   }
 
   async addMember(roomId, clientId, roomTtlSeconds) {
     const client = this.getClient();
     const key = `room:${roomId}:members`;
-    await client.sAdd(key, clientId);
+    await client.sadd(key, clientId);
     if (roomTtlSeconds) await client.expire(key, roomTtlSeconds);
-    return await client.sCard(key);
+    return await client.scard(key);
   }
 
   async removeMember(roomId, clientId) {
     const client = this.getClient();
     const key = `room:${roomId}:members`;
-    await client.sRem(key, clientId);
-    return await client.sCard(key); // returns remaining count
+    await client.srem(key, clientId);
+    return await client.scard(key);
   }
 
   async getMemberCount(roomId) {
-    const client = this.getClient();
-    const key = `room:${roomId}:members`;
-    return await client.sCard(key);
+    return await this.getClient().scard(`room:${roomId}:members`);
   }
 
   async addMessage(roomId, messageData, ttl = 300) {
     const client = this.getClient();
     const messageId = `msg:${roomId}:${Date.now()}:${Math.random().toString(36).substr(2, 9)}`;
-    const messageKey = `message:${messageId}`;
     const message = {
       id: messageId,
       roomId,
@@ -143,9 +132,9 @@ class RedisClient {
       timestamp: new Date().toISOString(),
       expiresAt: new Date(Date.now() + ttl * 1000).toISOString()
     };
-    await client.setEx(messageKey, ttl, JSON.stringify(message));
+    await client.setex(`message:${messageId}`, ttl, JSON.stringify(message));
     const roomMessagesKey = `room:${roomId}:messages`;
-    await client.lPush(roomMessagesKey, messageId);
+    await client.lpush(roomMessagesKey, messageId);
     await client.expire(roomMessagesKey, ttl);
     return message;
   }
@@ -153,33 +142,26 @@ class RedisClient {
   async getMessages(roomId) {
     const client = this.getClient();
     const roomMessagesKey = `room:${roomId}:messages`;
-    const messageIds = await client.lRange(roomMessagesKey, 0, -1);
+    const messageIds = await client.lrange(roomMessagesKey, 0, -1);
     if (!messageIds.length) return [];
-    // Use MGET for a single round-trip instead of N individual GETs
-    const messageKeys = messageIds.map(id => `message:${id}`);
-    const rawMessages = await client.mGet(messageKeys);
-    const messages = rawMessages
+    const rawMessages = await client.mget(...messageIds.map(id => `message:${id}`));
+    return rawMessages
       .filter(Boolean)
-      .map(raw => JSON.parse(raw));
-    return messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      .map(raw => JSON.parse(raw))
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   }
 
   async deleteMessage(messageId) {
-    const client = this.getClient();
-    const messageKey = `message:${messageId}`;
-    await client.del(messageKey);
+    await this.getClient().del(`message:${messageId}`);
   }
 
   async cleanupExpiredMessages(roomId) {
     const client = this.getClient();
     const roomMessagesKey = `room:${roomId}:messages`;
-    const messageIds = await client.lRange(roomMessagesKey, 0, -1);
+    const messageIds = await client.lrange(roomMessagesKey, 0, -1);
     for (const messageId of messageIds) {
-      const messageKey = `message:${messageId}`;
-      const exists = await client.exists(messageKey);
-      if (!exists) {
-        await client.lRem(roomMessagesKey, 1, messageId);
-      }
+      const exists = await client.exists(`message:${messageId}`);
+      if (!exists) await client.lrem(roomMessagesKey, 1, messageId);
     }
   }
 }
