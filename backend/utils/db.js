@@ -19,7 +19,6 @@ class RedisClient {
           }
           return Math.min(times * 100, 3000);
         },
-        tls: redisUrl.startsWith('rediss://') ? { rejectUnauthorized: false } : undefined,
       });
 
       await new Promise((resolve, reject) => {
