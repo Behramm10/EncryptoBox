@@ -178,7 +178,7 @@ const ChatRoom = ({ roomData, onLeaveRoom }) => {
       {qrUrl && <QRModal url={qrUrl} onClose={() => setQrUrl(null)} />}
 
       {/* Room Header + Info Bar */}
-      <div className="card p-6 mb-6 glow-effect">
+      <div className="card p-6 mb-6 glow-effect" style={{ overflow: 'visible' }}>
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center space-x-4">
             <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center shadow-lg shadow-primary-500/30">
