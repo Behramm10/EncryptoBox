@@ -2,11 +2,24 @@ import React, { useRef, useState } from 'react';
 import { attachmentsAPI } from '../utils/api';
 import { encryptBytes } from '../utils/crypto';
 
-const AttachmentUploader = ({ roomId, password, onAttachmentSent }) => {
+const AttachmentUploader = ({ roomId, password, onAttachmentSent, roomTtl }) => {
+  const ALL_FILE_TTL = [
+    { value: 30_000, label: '30s', seconds: 30 },
+    { value: 5 * 60 * 1000, label: '5m', seconds: 300 },
+    { value: 60 * 60 * 1000, label: '1h', seconds: 3600 },
+    { value: 24 * 60 * 60 * 1000, label: '24h', seconds: 86400 },
+  ];
+
+  const fileTtlOptions = roomTtl
+    ? ALL_FILE_TTL.filter(o => o.seconds <= roomTtl)
+    : ALL_FILE_TTL;
+
   const fileInputRef = useRef(null);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState(null);
-  const [ttlMs, setTtlMs] = useState(5 * 60 * 1000);
+  const [ttlMs, setTtlMs] = useState(
+    fileTtlOptions.length > 1 ? fileTtlOptions[1].value : fileTtlOptions[0]?.value || 300_000
+  );
 
   const handleChooseFile = () => fileInputRef.current?.click();
 
@@ -49,13 +62,12 @@ const AttachmentUploader = ({ roomId, password, onAttachmentSent }) => {
           {isUploading ? 'Uploading…' : 'Attach File'}
         </button>
         <select className="input-field !h-9 !py-1 !px-2 w-36" value={ttlMs} onChange={(e) => setTtlMs(parseInt(e.target.value, 10))}>
-          <option value={30_000}>30s</option>
-          <option value={5 * 60 * 1000}>5m</option>
-          <option value={60 * 60 * 1000}>1h</option>
-          <option value={24 * 60 * 60 * 1000}>24h</option>
+          {fileTtlOptions.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
         </select>
       </div>
-      <input ref={fileInputRef} type="file" className="hidden" accept="image/*,.pdf" onChange={handleFileChange} />
+      <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
       {error && <div className="text-xs text-red-600">{error}</div>}
     </div>
   );

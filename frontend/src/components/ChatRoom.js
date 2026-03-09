@@ -329,7 +329,7 @@ const ChatRoom = ({ roomData, onLeaveRoom }) => {
               roomTtl={roomData.ttl}
               onSendAttachment={
                 password ? (
-                  <AttachmentUploader roomId={roomData.roomId} password={password} onAttachmentSent={handleSendAttachmentMeta} />
+                  <AttachmentUploader roomId={roomData.roomId} password={password} roomTtl={roomData.ttl} onAttachmentSent={handleSendAttachmentMeta} />
                 ) : null
               }
             />
