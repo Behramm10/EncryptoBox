@@ -231,7 +231,7 @@ const ChatRoom = ({ roomData, onLeaveRoom }) => {
               </button>
             </div>
             {showExtend && (
-              <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl p-2 min-w-[140px]">
+              <div className="absolute bottom-full left-0 mb-2 z-50 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl p-2 min-w-[140px]">
                 <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 px-2 pb-1">Add time:</p>
                 {[
                   { label: '+30 min', value: 1800 },
