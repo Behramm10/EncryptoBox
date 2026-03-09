@@ -39,21 +39,11 @@ function verifyToken(token, secret) {
   }
 }
 
-const ALLOWED_MIME_TYPES = new Set([
-  'image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/svg+xml',
-  'video/mp4', 'video/webm',
-  'audio/mpeg', 'audio/ogg', 'audio/wav',
-  'application/pdf',
-  'text/plain',
-  'application/octet-stream',
-]);
-
 router.post('/:roomId/attachments/init', (req, res) => {
   try {
     const { roomId } = req.params;
     const { mimeType, ttlMs, viewOnce = false, category = 'chat' } = req.body || {};
     if (!mimeType) return res.status(400).json({ success: false, error: 'mimeType required' });
-    if (!ALLOWED_MIME_TYPES.has(mimeType)) return res.status(400).json({ success: false, error: `Unsupported MIME type: ${mimeType}` });
     const entry = attachmentStore.initAttachment({ roomId, mimeType, ttlMs, viewOnce, category });
     const uploadToken = signToken({ sub: entry.id, roomId, scope: 'upload' }, getSecret('upload'), 10 * 60);
     return res.status(201).json({ success: true, id: entry.id, uploadToken, expiresAt: entry.expiresAt });
