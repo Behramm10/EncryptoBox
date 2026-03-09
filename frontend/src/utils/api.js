@@ -90,6 +90,14 @@ export const roomAPI = {
       // Best-effort — don't block the user from navigating away
       return { success: false };
     }
+  },
+  extendRoom: async (roomId, addSeconds = 1800) => {
+    try {
+      const response = await api.post(`/rooms/${roomId}/extend`, { addSeconds });
+      return response.data;
+    } catch (error) {
+      throw new Error(error.response?.data?.error || 'Failed to extend room');
+    }
   }
 };
 

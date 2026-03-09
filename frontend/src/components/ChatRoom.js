@@ -20,6 +20,8 @@ const ChatRoom = ({ roomData, onLeaveRoom }) => {
   const [showPasswordTip, setShowPasswordTip] = useState(false);
   const [qrUrl, setQrUrl] = useState(null);
   const [roomExpiry, setRoomExpiry] = useState('');
+  const [showExtend, setShowExtend] = useState(false);
+  const [isExtending, setIsExtending] = useState(false);
   const pollIntervalRef = useRef(null);
   const expiryRef = useRef(null);
   const toast = useToast();
@@ -144,6 +146,22 @@ const ChatRoom = ({ roomData, onLeaveRoom }) => {
     }
     onLeaveRoom();
   };
+
+  const handleExtendSession = async (addSeconds) => {
+    setIsExtending(true);
+    try {
+      const result = await roomAPI.extendRoom(roomData.roomId, addSeconds);
+      if (result.success) {
+        roomData.expiresAt = result.newExpiresAt;
+        toast(`Session extended! New expiry updated.`, 'success');
+      }
+    } catch (err) {
+      toast(err.message || 'Failed to extend session', 'error');
+    } finally {
+      setIsExtending(false);
+      setShowExtend(false);
+    }
+  };
   if (!isPasswordSet) {
     return (
       <PasswordPrompt
@@ -200,9 +218,37 @@ const ChatRoom = ({ roomData, onLeaveRoom }) => {
             </span>
           </button>
 
-          <div className="flex flex-col gap-1 px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
+          <div className="relative flex flex-col gap-1 px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
             <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-600 dark:text-gray-400">Expires in</span>
-            <span className="text-sm font-bold text-amber-600 dark:text-amber-400">{roomExpiry}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-amber-600 dark:text-amber-400">{roomExpiry}</span>
+              <button
+                onClick={() => setShowExtend(!showExtend)}
+                className="text-xs px-2 py-0.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 border border-amber-500/20 transition-all"
+                title="Extend session"
+              >
+                +
+              </button>
+            </div>
+            {showExtend && (
+              <div className="absolute top-full left-0 mt-2 z-20 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-xl shadow-xl p-2 min-w-[140px]">
+                <p className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 px-2 pb-1">Add time:</p>
+                {[
+                  { label: '+30 min', value: 1800 },
+                  { label: '+1 hour', value: 3600 },
+                  { label: '+6 hours', value: 21600 },
+                ].map(opt => (
+                  <button
+                    key={opt.value}
+                    disabled={isExtending}
+                    onClick={() => handleExtendSession(opt.value)}
+                    className="w-full text-left px-3 py-1.5 text-xs rounded-lg hover:bg-primary-500/10 text-gray-700 dark:text-gray-200 transition-all disabled:opacity-50"
+                  >
+                    {isExtending ? 'Extending...' : opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col gap-1 px-4 py-3 rounded-xl bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10">
@@ -280,6 +326,7 @@ const ChatRoom = ({ roomData, onLeaveRoom }) => {
             <MessageInput
               onSendMessage={handleSendMessage}
               disabled={isLoading}
+              roomTtl={roomData.ttl}
               onSendAttachment={
                 password ? (
                   <AttachmentUploader roomId={roomData.roomId} password={password} onAttachmentSent={handleSendAttachmentMeta} />

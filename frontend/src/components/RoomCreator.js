@@ -7,6 +7,15 @@ const RoomCreator = ({ onRoomCreated }) => {
   const [roomId, setRoomId] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [maxMembers, setMaxMembers] = useState('');
+  const [roomTtl, setRoomTtl] = useState(3600);
+
+  const ROOM_TTL_OPTIONS = [
+    { label: '30 minutes', value: 1800 },
+    { label: '1 hour', value: 3600 },
+    { label: '6 hours', value: 21600 },
+    { label: '24 hours', value: 86400 },
+  ];
+  const selectedLabel = ROOM_TTL_OPTIONS.find(o => o.value === roomTtl)?.label || '1 hour';
 
   const handleCreateRoom = async () => {
     setIsCreating(true);
@@ -16,10 +25,9 @@ const RoomCreator = ({ onRoomCreated }) => {
       if (maxMembers && parseInt(maxMembers, 10) >= 2) {
         options.maxMembers = parseInt(maxMembers, 10);
       }
-      const response = await roomAPI.createRoom(3600, options);
-      // Calculate expiresAt locally since the create response only returns ttl
-      const expiresAt = new Date(Date.now() + (response.ttl || 3600) * 1000).toISOString();
-      onRoomCreated({ roomId: response.roomId, ttl: response.ttl, expiresAt, isNewRoom: true });
+      const response = await roomAPI.createRoom(roomTtl, options);
+      const expiresAt = new Date(Date.now() + (response.ttl || roomTtl) * 1000).toISOString();
+      onRoomCreated({ roomId: response.roomId, ttl: response.ttl || roomTtl, expiresAt, isNewRoom: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -62,9 +70,21 @@ const RoomCreator = ({ onRoomCreated }) => {
               <span className="text-3xl">🆕</span>
             </div>
             <h3 className="text-xl font-semibold text-gray-800 dark:text-gray-200 mb-2">Create New Room</h3>
-            <p className="text-gray-600 dark:text-gray-400 text-sm">Start a new encrypted conversation that will expire in 1 hour.</p>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">Start a new encrypted conversation that will expire in <span className="font-semibold text-primary-500">{selectedLabel}</span>.</p>
           </div>
           <div className="space-y-3 mb-6">
+            <div>
+              <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Room Duration</label>
+              <select
+                className="input-field w-full"
+                value={roomTtl}
+                onChange={(e) => setRoomTtl(parseInt(e.target.value, 10))}
+              >
+                {ROOM_TTL_OPTIONS.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
             <input type="number" min="2" max="50" value={maxMembers} onChange={(e) => setMaxMembers(e.target.value)} className="input-field" placeholder="Optional: Max members" />
           </div>
           <button onClick={handleCreateRoom} disabled={isCreating} className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed">

@@ -143,11 +143,45 @@ router.delete('/:id', async (req, res) => {
     const client = redisClient.getClient();
     await client.del(`room:${roomId}`);
     await client.del(`room:${roomId}:messages`);
+    // eslint-disable-next-line no-console
     console.log(`🗑️ Room deleted: ${roomId}`);
     res.json({ success: true, message: 'Room deleted successfully' });
   } catch (error) {
+    // eslint-disable-next-line no-console
     console.error('Error deleting room:', error);
     res.status(500).json({ success: false, error: 'Failed to delete room' });
+  }
+});
+
+// POST /api/rooms/:id/extend — add time to an existing room
+router.post('/:id/extend', async (req, res) => {
+  try {
+    const { id: roomId } = req.params;
+    const { addSeconds = 1800 } = req.body || {};
+    const room = await redisClient.getRoom(roomId);
+    if (!room) return res.status(404).json({ success: false, error: 'Room not found' });
+
+    const client = redisClient.getClient();
+    const currentTtl = await client.ttl(`room:${roomId}`);
+    const newTtl = Math.min(currentTtl + addSeconds, 86400); // cap at 24h
+
+    // Update Redis TTL
+    await client.expire(`room:${roomId}`, newTtl);
+    await client.expire(`room:${roomId}:members`, newTtl);
+    await client.expire(`room:${roomId}:messages`, newTtl);
+
+    // Update stored expiresAt
+    room.expiresAt = new Date(Date.now() + newTtl * 1000).toISOString();
+    await client.set(`room:${roomId}`, JSON.stringify(room));
+    await client.expire(`room:${roomId}`, newTtl);
+
+    // eslint-disable-next-line no-console
+    console.log(`⏰ Room extended: ${roomId} → +${addSeconds}s (new TTL: ${newTtl}s)`);
+    return res.json({ success: true, newExpiresAt: room.expiresAt, newTtl });
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error('Error extending room:', error);
+    res.status(500).json({ success: false, error: 'Failed to extend room' });
   }
 });
 

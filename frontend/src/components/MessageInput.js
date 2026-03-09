@@ -1,11 +1,33 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const MessageInput = ({ onSendMessage, disabled, onSendAttachment }) => {
+const MessageInput = ({ onSendMessage, disabled, onSendAttachment, roomTtl }) => {
+  const ALL_TTL_OPTIONS = [
+    { value: 30, label: '30s' },
+    { value: 300, label: '5m' },
+    { value: 3600, label: '1h' },
+    { value: 86400, label: '24h' },
+  ];
+
+  // Only show TTL options that are ≤ room TTL
+  const ttlOptions = roomTtl
+    ? ALL_TTL_OPTIONS.filter(o => o.value <= roomTtl)
+    : ALL_TTL_OPTIONS;
+
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState(null);
   const textareaRef = useRef(null);
-  const [ttlSeconds, setTtlSeconds] = useState(300);
+  const [ttlSeconds, setTtlSeconds] = useState(
+    ttlOptions.length > 1 ? ttlOptions[1].value : ttlOptions[0]?.value || 300
+  );
+
+  // If room TTL changes and current ttl exceeds it, clamp down
+  useEffect(() => {
+    if (roomTtl && ttlSeconds > roomTtl) {
+      const best = ttlOptions[ttlOptions.length - 1];
+      if (best) setTtlSeconds(best.value);
+    }
+  }, [roomTtl, ttlSeconds, ttlOptions]);
 
   // Auto-focus when component mounts
   useEffect(() => {
@@ -64,10 +86,9 @@ const MessageInput = ({ onSendMessage, disabled, onSendAttachment }) => {
                 value={ttlSeconds}
                 onChange={(e) => setTtlSeconds(parseInt(e.target.value, 10))}
               >
-                <option value={30}>30s</option>
-                <option value={300}>5m</option>
-                <option value={3600}>1h</option>
-                <option value={86400}>24h</option>
+                {ttlOptions.map(o => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </select>
             </div>
           </div>
