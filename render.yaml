@@ -1,0 +1,34 @@
+services:
+  # Node.js Express Backend
+  - type: web
+    name: encryptobox-backend
+    runtime: node
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: REDIS_URL
+        sync: false # User will paste their Upstash connection string
+      - key: FRONTEND_URL
+        sync: false # User will paste the frontend URL (or Render will use wildcard if left blank/handled in cors)
+      - key: INVITE_SECRET
+        generateValue: true
+      - key: ATTACHMENT_SECRET
+        generateValue: true
+
+  # React Frontend Static Site
+  - type: static
+    name: encryptobox-frontend
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    publishDir: build
+    envVars:
+      - key: REACT_APP_API_URL
+        fromService:
+          name: encryptobox-backend
+          type: web
+          property: url

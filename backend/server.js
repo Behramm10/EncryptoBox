@@ -83,8 +83,15 @@ async function startServer() {
     // Connect to Redis
     await redisClient.connect();
     
+    const http = require('http');
+    const server = http.createServer(app);
+    
+    // Initialize WebRTC signaling
+    const initSignaling = require('./utils/signaling');
+    initSignaling(server);
+    
     // Start the server
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📡 Health check: http://localhost:${PORT}/api/health`);
     });

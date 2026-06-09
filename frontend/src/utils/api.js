@@ -1,8 +1,11 @@
 import axios from 'axios';
 
+const rawApiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+export const API_URL = rawApiUrl.endsWith('/api') ? rawApiUrl : `${rawApiUrl.replace(/\/$/, '')}/api`;
+
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3001/api',
+  baseURL: API_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -199,7 +202,7 @@ export const attachmentsAPI = {
     }
   },
   buildDownloadUrl: (baseUrl, roomId, id, token) => {
-    const root = baseUrl || (process.env.REACT_APP_API_URL || 'http://localhost:3001/api');
+    const root = baseUrl || API_URL;
     return `${root}/rooms/${roomId}/attachments/${id}?token=${encodeURIComponent(token)}`;
   },
   delete: async (roomId, id) => {

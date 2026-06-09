@@ -40,7 +40,7 @@
   }
   
   .input-field {
-    @apply w-full px-4 py-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl text-gray-100 placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50 transition-all duration-300 hover:border-white/20;
+    @apply w-full px-4 py-3 bg-white/5 backdrop-blur-md border border-white/10 rounded-xl text-gray-100 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-400/50 focus:border-primary-400/50 transition-all duration-300 hover:border-white/20;
   }
   
   .input-field.light {
@@ -77,6 +77,18 @@
   
   body.light .neon-text {
     @apply text-gray-900;
+  }
+  
+  body.light .card h3 {
+    @apply text-gray-800;
+  }
+  
+  body.light .card p {
+    @apply text-gray-600;
+  }
+  
+  body.light h3.text-gray-200 {
+    @apply text-gray-800;
   }
   
   body.light .btn-secondary {

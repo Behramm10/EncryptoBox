@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { attachmentsAPI } from '../utils/api';
+import { attachmentsAPI, API_URL } from '../utils/api';
 import { decryptBytes } from '../utils/crypto';
 
 const AttachmentViewer = ({ roomId, message, password, onViewedOnce }) => {
@@ -13,7 +13,7 @@ const AttachmentViewer = ({ roomId, message, password, onViewedOnce }) => {
       try {
         setLoading(true);
         const { downloadToken } = await attachmentsAPI.mintDownloadToken(roomId, message.id, 300);
-        const url = attachmentsAPI.buildDownloadUrl(process.env.REACT_APP_API_URL, roomId, message.id, downloadToken);
+        const url = attachmentsAPI.buildDownloadUrl(API_URL, roomId, message.id, downloadToken);
         const res = await fetch(url);
         if (!res.ok) throw new Error('Failed to fetch attachment');
         const buf = new Uint8Array(await res.arrayBuffer());

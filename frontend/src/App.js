@@ -143,8 +143,16 @@ function App() {
             <div className="flex items-center space-x-3">
               {currentRoom && (
                 <>
-                  <div className="hidden md:block px-4 py-2 rounded-xl bg-white/5 border border-white/10">
-                    <span className="text-xs text-gray-400">Room</span>
+                  <div 
+                    className="hidden md:block px-4 py-2 rounded-xl bg-white/5 border border-white/10 cursor-pointer hover:border-primary-400/50 hover:bg-white/10 transition-all duration-200 group"
+                    onClick={() => {
+                      navigator.clipboard.writeText(currentRoom.roomId);
+                      const el = document.getElementById('room-copy-tooltip');
+                      if (el) { el.textContent = 'Copied!'; setTimeout(() => { el.textContent = 'Room'; }, 1500); }
+                    }}
+                    title="Click to copy full Room ID"
+                  >
+                    <span id="room-copy-tooltip" className="text-xs text-gray-400 group-hover:text-primary-300 transition-colors">Room</span>
                     <span className="block font-mono text-sm text-primary-300 mt-1">{currentRoom.roomId.slice(0, 8)}...</span>
                   </div>
                   <button

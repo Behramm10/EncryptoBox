@@ -7,16 +7,19 @@ const RoomCreator = ({ onRoomCreated }) => {
   const [roomId, setRoomId] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   const [maxMembers, setMaxMembers] = useState('');
+  const [roomTtl, setRoomTtl] = useState(3600);
 
   const handleCreateRoom = async () => {
     setIsCreating(true);
     setError(null);
 
     try {
-      const response = await roomAPI.createRoom(3600);
+      const response = await roomAPI.createRoom(roomTtl, {
+        maxMembers: maxMembers ? parseInt(maxMembers, 10) : undefined
+      });
       onRoomCreated({
         roomId: response.roomId,
-        ttl: response.ttl,
+        ttl: roomTtl,
         isNewRoom: true
       });
     } catch (err) {
@@ -76,7 +79,7 @@ const RoomCreator = ({ onRoomCreated }) => {
             <h3 className="text-xl font-semibold text-gray-200 mb-2">
               Create New Room
             </h3>
-            <p className="text-gray-400 text-sm">Start a new encrypted conversation that will expire in 1 hour.</p>
+            <p className="text-gray-400 text-sm">Start a new encrypted conversation with a custom expiry timer.</p>
           </div>
 
           <div className="space-y-3 mb-6">
@@ -89,6 +92,24 @@ const RoomCreator = ({ onRoomCreated }) => {
               className="input-field" 
               placeholder="Optional: Max members" 
             />
+
+            <div className="mt-3">
+              <label className="text-xs text-gray-400 mb-1 block">Room Lifetime (TTL)</label>
+              <select
+                className="input-field !py-2 text-sm"
+                value={roomTtl}
+                onChange={(e) => setRoomTtl(parseInt(e.target.value, 10))}
+              >
+                <option value={300} className="bg-gray-900">5 minutes</option>
+                <option value={900} className="bg-gray-900">15 minutes</option>
+                <option value={1800} className="bg-gray-900">30 minutes</option>
+                <option value={3600} className="bg-gray-900">1 hour</option>
+                <option value={7200} className="bg-gray-900">2 hours</option>
+                <option value={14400} className="bg-gray-900">4 hours</option>
+                <option value={28800} className="bg-gray-900">8 hours</option>
+                <option value={86400} className="bg-gray-900">24 hours</option>
+              </select>
+            </div>
           </div>
 
           <button onClick={handleCreateRoom} disabled={isCreating} className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed">

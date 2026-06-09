@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 import AttachmentViewer from './AttachmentViewer';
+import AntiForensicText from './AntiForensicText';
 
 const MessageList = ({ messages, onDecryptMessage, isLoading, password, roomId, onAttachmentViewed }) => {
   const [decryptedMessages, setDecryptedMessages] = useState({});
@@ -151,7 +152,11 @@ const MessageList = ({ messages, onDecryptMessage, isLoading, password, roomId, 
                 ) : (
                   <div className="flex items-start gap-2">
                     <span className="mt-0.5 text-primary-300">🔒</span>
-                    <p className="text-sm leading-relaxed">{decryptedText || 'Loading...'}</p>
+                    {decryptedText ? (
+                      <AntiForensicText text={decryptedText} textColor={isMine ? '#ffffff' : '#e5e7eb'} />
+                    ) : (
+                      <p className="text-sm leading-relaxed">Loading...</p>
+                    )}
                   </div>
                 )}
               </div>

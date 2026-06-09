@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { encryptBytes, decryptBytes } from '../utils/crypto';
+import { API_URL } from '../utils/api';
 
 const VaultPanel = ({ roomId, password }) => {
   const fileRef = useRef(null);
@@ -14,13 +15,13 @@ const VaultPanel = ({ roomId, password }) => {
       const buf = new Uint8Array(await file.arrayBuffer());
       const { ciphertextBytes, iv, salt } = await encryptBytes(buf, password);
       // Use vault endpoints via fetch to avoid expanding api.js more
-      const initRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/rooms/${roomId}/vault/init`, {
+      const initRes = await fetch(`${API_URL}/rooms/${roomId}/vault/init`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mimeType: file.type || 'application/octet-stream', ttlMs: 24*3600*1000 })
       });
       const init = await initRes.json();
       if (!init.success) throw new Error(init.error || 'Failed to init');
-      const upRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/rooms/${roomId}/vault/${init.id}`, {
+      const upRes = await fetch(`${API_URL}/rooms/${roomId}/vault/${init.id}`, {
         method: 'PUT', headers: {}, body: ciphertextBytes
       });
       const up = await upRes.json();
@@ -36,7 +37,7 @@ const VaultPanel = ({ roomId, password }) => {
 
   const downloadItem = async (item) => {
     try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:3001/api'}/rooms/${roomId}/vault/${item.id}`);
+      const res = await fetch(`${API_URL}/rooms/${roomId}/vault/${item.id}`);
       if (!res.ok) throw new Error('Failed to fetch');
       const cipher = new Uint8Array(await res.arrayBuffer());
       const iv = Uint8Array.from(atob(item.iv), c => c.charCodeAt(0));
