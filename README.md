@@ -1,7 +1,6 @@
 # 🔐 EncryptoBox - Ephemeral Zero-Trust Messaging Platform
 
 **Live Application**: [https://encryptobox.vercel.app](https://encryptobox.vercel.app)  
-**Author**: [Behram Umrigar (Behramm10)](https://github.com/Behramm10)
 
 EncryptoBox is a state-of-the-art, self-destructing secure communication platform designed for zero-trust environments. By implementing a **hybrid WebRTC peer-to-peer (P2P) transport with automatic Redis-backed relay fallbacks**, and using strictly **native Web Crypto APIs** (zero external cryptographic libraries), EncryptoBox ensures that plaintext and encryption keys never leave the operator's browser. 
 
@@ -272,3 +271,7 @@ To verify the security features of the application, follow these guidelines:
 - Open browser dev console (`Application` or `Storage` tab) and verify the existence of local keys and active messages.
 - Press `Ctrl + Q`.
 - Verify the page immediately redirects to Google. Inspect the local storage/session storage to confirm that all sensitive credentials have been completely wiped.
+
+---
+
+## Author: [Behram Umrigar (Behramm10)](https://github.com/Behramm10)
